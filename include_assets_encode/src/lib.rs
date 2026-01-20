@@ -9,6 +9,7 @@ use std::borrow::Borrow as _;
 #[proc_macro]
 pub fn include_dir(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let old_current_dir = std::env::current_dir();
     std::env::set_current_dir(manifest_dir).unwrap();
 
     let args = syn::parse_macro_input!(tokens as parse::IncludeDirArgs);
@@ -19,6 +20,10 @@ pub fn include_dir(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let (codec, codec_tokens, _codec_type_tokens) = common::parse_codec(opts.get("compression").cloned(), opts.get("level").cloned());
     let symlink_rules = named::parse_symlink_rules(opts.get("links").cloned());
+
+    if let Ok(old_current_dir) = old_current_dir {
+        std::env::set_current_dir(old_current_dir).unwrap();
+    }
 
     let named::NamedArchive {
         compressed_data,
@@ -55,6 +60,7 @@ pub fn include_dir(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(AssetEnum, attributes(archive, asset))]
 pub fn derive_asset_enum(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let old_current_dir = std::env::current_dir();
     std::env::set_current_dir(manifest_dir).unwrap();
 
     let e = syn::parse_macro_input!(tokens as syn::ItemEnum);
@@ -79,6 +85,10 @@ pub fn derive_asset_enum(tokens: proc_macro::TokenStream) -> proc_macro::TokenSt
         file_data,
     );
     let data_token = syn::LitByteStr::new(&compressed_data, proc_macro2::Span::call_site());
+
+    if let Ok(old_current_dir) = old_current_dir {
+        std::env::set_current_dir(old_current_dir).unwrap();
+    }
 
     quote::quote! {
         impl include_assets::AssetEnum for #enum_name {
